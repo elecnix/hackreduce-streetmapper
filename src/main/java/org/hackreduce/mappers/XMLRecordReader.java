@@ -47,15 +47,15 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
     private String _endMark;
     private CompressionCodecFactory _compressionCodecs = null;
     private long _start;
-    private long _pos;
-    private long _end;
+    protected long _pos;
+    protected long _end;
     private long _recordCount;
     private long _nextStatusRecords = 1;
     private long _nextCalledCount;
     private int _statusMaxRecordChars;
     private FileSplit _split;
     private FSDataInputStream _fileInputStream;
-    private BufferedInputStream _bufferedInputStream; // Wrap FSDataInputStream for efficient backward seeks 
+    protected BufferedInputStream _bufferedInputStream; // Wrap FSDataInputStream for efficient backward seeks 
     private Text _key = null;
     private Text _value = null;
     private Text _fileName = null;
@@ -190,15 +190,15 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
         readUntilMatchBegin();
     }
 
-    boolean readUntilMatchBegin() throws IOException {
+    protected boolean readUntilMatchBegin() throws IOException {
         return fastReadUntilMatch(_beginMark, false, null);
     }
 
-    private boolean readUntilMatchEnd(DataOutputBuffer buf) throws IOException {
+    protected boolean readUntilMatchEnd(DataOutputBuffer buf) throws IOException {
       return fastReadUntilMatch(_endMark, true, buf);
     }
 
-    boolean fastReadUntilMatch(String textPat, boolean includePat, DataOutputBuffer outBufOrNull) throws IOException {
+    protected boolean fastReadUntilMatch(String textPat, boolean includePat, DataOutputBuffer outBufOrNull) throws IOException {
       byte[] cpat = textPat.getBytes("UTF-8");
       int m = 0;
       boolean match = false;
@@ -232,7 +232,7 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
           m = 0;
         }
       }
-      if (!includePat && match) {
+      if (match && !includePat) {
         _bufferedInputStream.reset();
       } else if (outBufOrNull != null) {
         outBufOrNull.write(cpat);

@@ -45,7 +45,7 @@ public class WayCounter extends org.hackreduce.examples.RecordCounter {
 		// The BIXI datasets are XML files with each station information enclosed withing
 		// the <station></station> tags
 		job.setInputFormatClass(XMLInputFormat.class);
-		XMLRecordReader.setRecordTags(job, "<way>", "</way>");
+		XMLMultiRecordReader.setTags(job, "way,node");
 	}
 
 	@Override

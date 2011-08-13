@@ -20,6 +20,7 @@ package org.hackreduce.streetmapper;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 
@@ -70,26 +71,27 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 
 	@Override
     protected boolean readUntilMatchBegin() throws IOException {
-        return fastReadUntilMatch(false, null);
+        return fastReadUntilMatch(true, null);
     }
 
 	@Override
     protected boolean readUntilMatchEnd(DataOutputBuffer buf) throws IOException {
-      return fastReadUntilMatch(true, buf);
+      return fastReadUntilMatch(false, buf);
     }
 
-	protected boolean fastReadUntilMatch(boolean isEnd, DataOutputBuffer outBufOrNull) throws IOException {
+	protected boolean fastReadUntilMatch(boolean matchBeginMark, DataOutputBuffer outBufOrNull) throws IOException {
 		byte[][] cpats = new byte[marks.size()][];
 		for (int i = 0; i < marks.size(); i++) {
-			String marker = isEnd ? marks.get(i).endMarker : marks.get(i).startMarker;
+			String marker = matchBeginMark ? marks.get(i).startMarker : marks.get(i).endMarker;
 			cpats[i] = marker.getBytes("UTF-8");
 		}
 		
-		
 		int m = 0;
+		boolean[] mayMarks = new boolean[marks.size()];
+		Arrays.fill(mayMarks, true);
 		boolean match = false;
-		int msup = cpats[0].length;
 		int LL = 120000 * 10;
+		int matchingMark = 0;
 
 		_bufferedInputStream.mark(LL); // large number to invalidate mark
 		while (true) {
@@ -97,19 +99,32 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 			if (b == -1) break;
 
 			byte c = (byte) b; // this assumes eight-bit matching. OK with UTF-8
-			if (c == cpats[0][m]) {
-				m++;
-				if (m == msup) {
-					match = true;
-					break;
+
+			boolean cMatch = false;
+			for (int k = 0; k < mayMarks.length; k++) {
+				if (mayMarks[k]) {
+					if (c == cpats[k][m]) {
+						m++;
+						cMatch = true;
+						if (m == cpats[k].length) {
+							match = true;
+							matchingMark = k;
+							break;
+						}
+					} else {
+						mayMarks[k] = false;
+					}
 				}
-			} else {
+			}
+			if (!cMatch) {
 				_bufferedInputStream.mark(LL); // rest mark so we could jump back if we found a match
 				if (outBufOrNull != null) {
-					outBufOrNull.write(cpats[0], 0, m);
+					// we're looking for the end tag
+					outBufOrNull.write(cpats[matchingMark], 0, m);
 					outBufOrNull.write(c);
 					_pos += m + 1;
 				} else {
+					// we're looking for the start tag
 					_pos += m + 1;
 					if (_pos >= _end) {
 						break;
@@ -118,11 +133,11 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 				m = 0;
 			}
 		}
-		if (!isEnd && match) {
+		if (matchBeginMark && match) {
 			_bufferedInputStream.reset();
 		} else if (outBufOrNull != null) {
-			outBufOrNull.write(cpats[0]);
-			_pos += msup;
+			outBufOrNull.write(cpats[matchingMark]);
+			_pos += cpats[matchingMark].length;
 		}
 		return match;
 	}

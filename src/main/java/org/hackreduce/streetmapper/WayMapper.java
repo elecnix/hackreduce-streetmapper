@@ -21,16 +21,6 @@ import org.hackreduce.mappers.XMLRecordReader;
 public abstract class WayMapper<K extends WritableComparable<?>, V extends Writable>
 extends ModelMapper<WayRecord, Text, Text, K, V> {
 
-	/**
-	 * Configures the MapReduce job to read data from the Bixi data dump.
-	 *
-	 * @param job
-	 */
-	public static void configureJob(Job job) {
-		job.setInputFormatClass(XMLInputFormat.class);
-		XMLRecordReader.setRecordTags(job, "<way>", "</way>");
-	}
-
 	@Override
 	protected WayRecord instantiateModel(Text xmlFilename, Text xml) {
 		return new WayRecord(xmlFilename, xml);

@@ -33,7 +33,6 @@ public class WayCounter extends org.hackreduce.examples.RecordCounter {
 		@Override
 		protected void map(WayRecord record, Context context) throws IOException,
 				InterruptedException {
-
 			context.getCounter(Count.TOTAL_RECORDS).increment(1);
 			context.write(TOTAL_COUNT, ONE_COUNT);
 		}
@@ -42,8 +41,7 @@ public class WayCounter extends org.hackreduce.examples.RecordCounter {
 
 	@Override
 	public void configureJob(Job job) {
-		// The BIXI datasets are XML files with each station information enclosed withing
-		// the <station></station> tags
+		//override configureJob of RecordCounter.java
 		job.setInputFormatClass(XMLInputFormat.class);
 		XMLMultiRecordReader.setTags(job, "way,node");
 	}

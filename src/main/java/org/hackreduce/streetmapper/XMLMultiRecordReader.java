@@ -34,64 +34,74 @@ import org.hackreduce.mappers.XMLRecordReader;
 public class XMLMultiRecordReader extends XMLRecordReader {
 
 	public static final String TAGS = "hadoop.mapred.xmlrecordreader.tag";
-
+	private byte[][] cpats;//byte check of tags 
+	private int matchingMark;
+	private boolean[] mayMarks;
+	
 	public class Mark {
-		
+
 		String startMarker;
 		String endMarker;
-		
+
 		public Mark(String startMarker, String endMarker) {
 			this.startMarker = startMarker;
 			this.endMarker = endMarker;
 		}
-		
+
 	}
 
 	private ArrayList<Mark> marks = new ArrayList<Mark>();
-	
+
 	public void addMark(Mark mark) {
 		marks.add(mark);
 	}
-	
+
 	public void addMark(String tagname) {
 		marks.add(new Mark("<" + tagname + ">", "</" + tagname + ">"));
 	}
-	
+
 	@Override
 	public void initialize(InputSplit split, TaskAttemptContext context)
 			throws IOException, InterruptedException {
 		super.initialize(split, context);
-		
-        Configuration conf = context.getConfiguration();
-        String tags = conf.get(TAGS);
-        for (String tag : tags.split(",")) {
-        	addMark(tag);
-        }
+
+		Configuration conf = context.getConfiguration();
+		String tags = conf.get(TAGS);
+		for (String tag : tags.split(",")) {
+			addMark(tag);
+		}
+
+		//setup for fastReadUntilMatch
+		//1. save all tags' byte value into cpats
+		cpats = new byte[marks.size()*2][];//start and end tag
+		for (int i = 0; i < marks.size()*2; i++) {
+			String marker = ((i^1)==0) ? marks.get(i).startMarker : marks.get(i).endMarker;
+			cpats[i] = marker.getBytes("UTF-8");
+		}
+
+		mayMarks = new boolean[marks.size()];//start tag only 
+		Arrays.fill(mayMarks, true);
+		matchingMark = -1;
+
 	}
 
 	@Override
-    protected boolean readUntilMatchBegin() throws IOException {
-        return fastReadUntilMatch(true, null);
-    }
+	protected boolean readUntilMatchBegin() throws IOException {
+		return fastReadUntilMatch(true, null);
+	}
 
 	@Override
-    protected boolean readUntilMatchEnd(DataOutputBuffer buf) throws IOException {
-      return fastReadUntilMatch(false, buf);
-    }
+	protected boolean readUntilMatchEnd(DataOutputBuffer buf) throws IOException {
+		return fastReadUntilMatch(false, buf);
+	}
 
 	protected boolean fastReadUntilMatch(boolean matchBeginMark, DataOutputBuffer outBufOrNull) throws IOException {
-		byte[][] cpats = new byte[marks.size()][];
-		for (int i = 0; i < marks.size(); i++) {
-			String marker = matchBeginMark ? marks.get(i).startMarker : marks.get(i).endMarker;
-			cpats[i] = marker.getBytes("UTF-8");
-		}
-		
-		int m = 0;
-		boolean[] mayMarks = new boolean[marks.size()];
-		Arrays.fill(mayMarks, true);
+
+		boolean cMatch=false;
 		boolean match = false;
 		int LL = 120000 * 10;
-		int matchingMark = 0;
+		int m=0;
+
 
 		_bufferedInputStream.mark(LL); // large number to invalidate mark
 		while (true) {
@@ -100,22 +110,37 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 
 			byte c = (byte) b; // this assumes eight-bit matching. OK with UTF-8
 
-			boolean cMatch = false;
-			for (int k = 0; k < mayMarks.length; k++) {
-				if (mayMarks[k]) {
-					if (c == cpats[k][m]) {
-						m++;
-						cMatch = true;
-						if (m == cpats[k].length) {
-							match = true;
-							matchingMark = k;
-							break;
+			cMatch = false;
+			if(matchingMark==-1){
+				for (int k = 0; k < mayMarks.length; k++) {//looping only for start tag
+					if (mayMarks[k]) {
+						if (c == cpats[k*2][m]|| (cpats[k*2][m] == '>' && c == ' ')) {
+							m++;
+							cMatch = true;
+							if (m == cpats[k*2].length) {
+								match = true;
+								matchingMark = k*2;
+								Arrays.fill(mayMarks, true);//for next round
+								break;
+							}
+						} else {
+							mayMarks[k] = false;
 						}
-					} else {
-						mayMarks[k] = false;
 					}
 				}
-			}
+			}//end LOOPING to search for start tag
+			else{
+				if(c==cpats[matchingMark+1][m]){//end tag
+						m++;
+						cMatch=true;
+						if(m==cpats[matchingMark+1].length){
+							match=true;
+							matchingMark=-1;
+							break;
+						}
+				}
+			}//end searching for end tag
+			
 			if (!cMatch) {
 				_bufferedInputStream.mark(LL); // rest mark so we could jump back if we found a match
 				if (outBufOrNull != null) {
@@ -143,7 +168,7 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 	}
 
 	public static void setTags(Job job, String taglist) {
-    	job.getConfiguration().set(TAGS, taglist);
-    }
+		job.getConfiguration().set(TAGS, taglist);
+	}
 
 }

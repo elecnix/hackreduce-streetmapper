@@ -21,8 +21,6 @@ package org.hackreduce.streetmapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -45,6 +43,10 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 			this.endMarker = endMarker;
 		}
 		
+		@Override
+		public String toString() {
+			return "Mark[" + startMarker + " => " + endMarker + "]";
+		}
 	}
 
 	private ArrayList<Mark> marks = new ArrayList<Mark>();
@@ -54,19 +56,23 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 	}
 	
 	public void addMark(String tagname) {
-		marks.add(new Mark("<" + tagname + ">", "</" + tagname + ">"));
+		marks.add(new Mark("<" + tagname, "</" + tagname + ">"));
 	}
-	
+
+	public static void setTags(Job job, String taglist) {
+    	job.getConfiguration().set(TAGS, taglist);
+    }
+
 	@Override
 	public void initialize(InputSplit split, TaskAttemptContext context)
 			throws IOException, InterruptedException {
-		super.initialize(split, context);
 		
         Configuration conf = context.getConfiguration();
         String tags = conf.get(TAGS);
         for (String tag : tags.split(",")) {
         	addMark(tag);
         }
+        super.initialize(split, context);
 	}
 
 	@Override
@@ -104,19 +110,20 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 			for (int k = 0; k < mayMarks.length; k++) {
 				if (mayMarks[k]) {
 					if (c == cpats[k][m]) {
-						m++;
 						cMatch = true;
-						if (m == cpats[k].length) {
-							match = true;
-							matchingMark = k;
-							break;
-						}
+						matchingMark = k;
 					} else {
 						mayMarks[k] = false;
 					}
 				}
 			}
-			if (!cMatch) {
+			if (cMatch) {
+				m++;
+				if (m == cpats[matchingMark].length) {
+					match = true;
+					break;
+				}
+			} else {
 				_bufferedInputStream.mark(LL); // rest mark so we could jump back if we found a match
 				if (outBufOrNull != null) {
 					// we're looking for the end tag
@@ -131,6 +138,7 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 					}
 				}
 				m = 0;
+				Arrays.fill(mayMarks, true);
 			}
 		}
 		if (matchBeginMark && match) {
@@ -141,9 +149,5 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 		}
 		return match;
 	}
-
-	public static void setTags(Job job, String taglist) {
-    	job.getConfiguration().set(TAGS, taglist);
-    }
 
 }

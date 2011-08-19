@@ -9,7 +9,9 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.ToolRunner;
 import org.hackreduce.mappers.ModelMapper;
 import org.hackreduce.mappers.XMLInputFormat;
-import org.hackreduce.mappers.XMLRecordReader;
+import org.hackreduce.streetmapper.model.NodeRecord;
+import org.hackreduce.streetmapper.model.OsmRecord;
+import org.hackreduce.streetmapper.model.WayRecord;
 
 /**
  * This MapReduce job will count the total number of records in the data dump.
@@ -18,6 +20,8 @@ public class WayCounter extends org.hackreduce.examples.RecordCounter {
 
 	public enum Count {
 		TOTAL_RECORDS,
+		WAY_RECORDS,
+		NODE_RECORDS,
 		UNIQUE_KEYS
 	}
 
@@ -31,10 +35,15 @@ public class WayCounter extends org.hackreduce.examples.RecordCounter {
 		public static final LongWritable ONE_COUNT = new LongWritable(1);
 
 		@Override
-		protected void map(WayRecord record, Context context) throws IOException,
+		protected void map(OsmRecord record, Context context) throws IOException,
 				InterruptedException {
 
 			context.getCounter(Count.TOTAL_RECORDS).increment(1);
+			if (record instanceof WayRecord) {
+				context.getCounter(Count.WAY_RECORDS).increment(1);
+			} else if (record instanceof NodeRecord) {
+				context.getCounter(Count.NODE_RECORDS).increment(1);
+			}
 			context.write(TOTAL_COUNT, ONE_COUNT);
 		}
 

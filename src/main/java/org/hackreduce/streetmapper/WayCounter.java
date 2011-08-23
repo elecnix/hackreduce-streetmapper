@@ -9,6 +9,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -16,7 +17,6 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.hackreduce.mappers.XMLInputFormat;
 import org.hackreduce.streetmapper.model.NodeRecord;
-import org.hackreduce.streetmapper.model.OsmRecord;
 import org.hackreduce.streetmapper.model.WayNodeRecord;
 import org.hackreduce.streetmapper.model.WayRecord;
 
@@ -33,31 +33,21 @@ public class WayCounter extends Configured implements Tool {
 		UNKNOWN_RECORDS
 	}
 
-	public static class RecordCounterMapper extends WayMapper<Text, WayNodeRecord> {
+	public static class RecordCounterMapper extends Mapper<Text, WayNodeRecord, Text, WayNodeRecord> {
 
 		// Our own made up key to send all counts to a single Reducer, so we can
 		// aggregate a total value.
 		public static final Text TOTAL_COUNT = new Text("total");
 
-		@Override
-		protected void map(OsmRecord record, Context context) throws IOException,
-				InterruptedException {
-
-			WayNodeRecord output = new WayNodeRecord(record);
-			
+		protected void map(Text key, WayNodeRecord record, org.apache.hadoop.mapreduce.Mapper<Text,WayNodeRecord,Text,WayNodeRecord>.Context context) throws IOException, InterruptedException {
 			context.getCounter(Count.TOTAL_RECORDS).increment(1);
-			if (record instanceof WayRecord) {
+			if (record.get() instanceof WayRecord) {
 				context.getCounter(Count.WAY_RECORDS).increment(1);
-			} else if (record instanceof NodeRecord) {
+			} else if (record.get() instanceof NodeRecord) {
 				context.getCounter(Count.NODE_RECORDS).increment(1);
 			}
-			if (output == null) {
-				context.getCounter(Count.UNKNOWN_RECORDS).increment(1);
-			} else {
-				context.write(TOTAL_COUNT, output);
-			}
+			context.write(TOTAL_COUNT, record);
 		}
-
 	}
 
 	public static class RecordCounterReducer extends Reducer<Text, WayNodeRecord, Text, LongWritable> {

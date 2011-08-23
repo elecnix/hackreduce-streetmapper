@@ -15,6 +15,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.hackreduce.mappers.XMLInputFormat;
+import org.hackreduce.mappers.XMLRecordReader;
 import org.hackreduce.streetmapper.model.NodeRecord;
 import org.hackreduce.streetmapper.model.OsmRecord;
 import org.hackreduce.streetmapper.model.WayNodeRecord;
@@ -97,6 +98,7 @@ public class WayCounter extends Configured implements Tool {
 		// the <node></node> and <way></way> tags
 		job.setInputFormatClass(XMLInputFormat.class);
 		XMLMultiRecordReader.setTags(job, "way,node");
+//		XMLRecordReader.setRecordTags(job, "<way", "</way>");
 
 		// This is what the Mapper will be outputting to the Reducer
 		job.setMapOutputKeyClass(Text.class);

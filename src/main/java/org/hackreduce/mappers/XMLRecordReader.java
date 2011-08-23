@@ -60,6 +60,10 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
     private Text _value = null;
     private Text _fileName = null;
 
+	private long initializedAt;
+
+	protected int tagsRead;
+
 
     /**
      * Define the start and end tags that are considered to contain a record for Hadoop.
@@ -101,6 +105,7 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
         } else {
           _bufferedInputStream = new BufferedInputStream(_fileInputStream);
         }
+        initializedAt = System.currentTimeMillis();
         seekNextRecordBoundary();
     }
     
@@ -109,6 +114,8 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
         if (_bufferedInputStream != null) {
             _bufferedInputStream.close();
           }
+		long closedAt = System.currentTimeMillis();
+		System.out.println("[Timer] initialize...close: " + (closedAt - initializedAt) + " ms (read " + tagsRead + " tags)");
     }
 
     @Override
@@ -191,6 +198,7 @@ public class XMLRecordReader extends RecordReader<Text, Text>{
     }
 
     protected boolean readUntilMatchBegin() throws IOException {
+		tagsRead++;
         return fastReadUntilMatch(_beginMark, false, null);
     }
 

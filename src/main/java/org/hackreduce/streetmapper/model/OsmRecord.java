@@ -16,6 +16,8 @@ public class OsmRecord implements Writable {
 	
 	public OsmRecord(Text xmlFilename, Text xml) {
 		// TODO parse XML
+		System.out.println("");
+		System.out.println(xml);
 	}
 
 	@Override

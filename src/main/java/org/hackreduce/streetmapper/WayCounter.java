@@ -78,7 +78,7 @@ public class WayCounter extends Configured implements Tool {
         Job job = new Job(conf);
         job.setJarByClass(getClass());
         job.setJobName(getClass().getName());
-
+        
         // Tell the job which Mapper and Reducer to use (classes defined above)
         job.setMapperClass(RecordCounterMapper.class);
 		job.setReducerClass(RecordCounterReducer.class);
@@ -86,7 +86,7 @@ public class WayCounter extends Configured implements Tool {
 		// The OpenStreetMap datasets are XML files with each way and node information enclosed within
 		// the <node></node> and <way></way> tags
 		job.setInputFormatClass(XMLInputFormat.class);
-		XMLMultiRecordReader.setTags(job, "way,node");
+		XMLInputFormat.setMaxInputSplitSize(job, 2000); // XXX for testing splits
 
 		// This is what the Mapper will be outputting to the Reducer
 		job.setMapOutputKeyClass(Text.class);

@@ -17,5 +17,5 @@ public class XMLInputFormat extends FileInputFormat<Text, WayNodeRecord> {
     public RecordReader<Text, WayNodeRecord> createRecordReader(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException {
         return new OsmRecordReader();
     }
-
+    
 }

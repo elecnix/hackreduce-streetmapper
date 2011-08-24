@@ -2,9 +2,12 @@ package org.hackreduce.streetmapper.stax;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.logging.Logger;
 
+import javax.xml.stream.Location;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLReporter;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
@@ -21,6 +24,11 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.hackreduce.mappers.XMLRecordReader;
 
+import com.sun.org.apache.xerces.internal.impl.XMLDocumentScannerImpl;
+import com.sun.org.apache.xerces.internal.impl.XMLErrorReporter;
+import com.sun.org.apache.xerces.internal.impl.XMLStreamReaderImpl;
+import com.sun.org.apache.xerces.internal.xni.XNIException;
+
 public abstract class StaxRecordReader<R> extends RecordReader<Text, R> {
 
 	private static final Logger LOG = Logger.getLogger(XMLRecordReader.class.getName());
@@ -31,8 +39,7 @@ public abstract class StaxRecordReader<R> extends RecordReader<Text, R> {
 	private long _pos;
 	private Text _fileName;
 	private CompressionCodecFactory _compressionCodecs;
-	private FSDataInputStream _fileInputStream;
-	private BufferedInputStream _bufferedInputStream;
+	private SoftBoundedRangeFileInputStream _inputStream;
 	private XMLStreamReader _reader;
 	private Text _key;
 	private R _value;
@@ -56,16 +63,37 @@ public abstract class StaxRecordReader<R> extends RecordReader<Text, R> {
         
         // open the file and seek to the start of the split
         FileSystem fs = file.getFileSystem(conf);
-        _fileInputStream = fs.open(file);
-        _fileInputStream.seek(_start);
+        _inputStream = new SoftBoundedRangeFileInputStream(fs.open(file), _start, _split.getLength());
+        InputStream in = _inputStream;
         if (codec != null) {
-          _bufferedInputStream = new BufferedInputStream(codec.createInputStream(_fileInputStream));
-        } else {
-          _bufferedInputStream = new BufferedInputStream(_fileInputStream);
+        	in = new BufferedInputStream(codec.createInputStream(_inputStream));
         }
-		XMLInputFactory factory = XMLInputFactory.newInstance();
+		final XMLInputFactory factory = XMLInputFactory.newInstance();
+		factory.setXMLReporter(new XMLReporter() {
+			@Override
+			public void report(String message, String errorType,
+					Object relatedInformation, Location location)
+					throws XMLStreamException {
+				LOG.info("blah");
+			}
+		});
 		try {
-			_reader = factory.createXMLStreamReader(_bufferedInputStream);
+			_reader = factory.createXMLStreamReader(in);
+
+			// Because a split can occur anywhere in the XML document, the parser will complain.
+			// We silence it off, since we know the previous split will read until it reached a
+			// full record, even if that means reading past the end of the split.
+//			((XMLStreamReaderImpl) _reader).getScanner().setProperty("http://apache.org/xml/properties/internal/error-reporter", new XMLErrorReporter() {
+//				@Override
+//				public void reportError(String domain, String key,
+//						Object[] arguments, short severity) throws XNIException {
+//					try {
+//						super.reportError(domain, key, arguments, severity);
+//					} catch (XNIException e) {
+//						LOG.info("Ignoring: " + e);
+//					}
+//				}
+//			});
 		} catch (XMLStreamException e) {
 			throw new IOException(e);
 		}
@@ -74,19 +102,15 @@ public abstract class StaxRecordReader<R> extends RecordReader<Text, R> {
 	@Override
 	public boolean nextKeyValue() throws IOException, InterruptedException {
 		// TODO check number of bytes read from input stream to finish at end of split
-        if (_pos >= _end) {
-          return false;
-        }
-        try {
-        	_key = _fileName;
-			_value = parseRecord(_reader);
-			return _value != null;
-		} catch (XMLStreamException e) {
-			throw new IOException(e);
+		if (_pos >= _end) {
+			return false;
 		}
+		_key = _fileName;
+		_value = parseRecord(_reader);
+		return _value != null;
 	}
 
-	protected abstract R parseRecord(XMLStreamReader reader) throws XMLStreamException;
+	protected abstract R parseRecord(XMLStreamReader reader);
 
 	@Override
 	public Text getCurrentKey() throws IOException, InterruptedException {

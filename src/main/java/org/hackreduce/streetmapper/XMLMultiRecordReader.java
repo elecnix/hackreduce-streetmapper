@@ -86,15 +86,24 @@ public class XMLMultiRecordReader extends XMLRecordReader {
     }
 
 	protected boolean fastReadUntilMatch(boolean matchBeginMark, DataOutputBuffer outBufOrNull) throws IOException {
-		byte[][] cpats = new byte[marks.size()][];
+		byte[][] cpats = new byte[marks.size() + 1][];
 		for (int i = 0; i < marks.size(); i++) {
 			String marker = matchBeginMark ? marks.get(i).startMarker : marks.get(i).endMarker;
 			cpats[i] = marker.getBytes("UTF-8");
 		}
+		boolean[] mayMarks = new boolean[marks.size() + 1];
+		Arrays.fill(mayMarks, true);
+		boolean[] blacklistMarks = new boolean[marks.size() + 1];
+		Arrays.fill(blacklistMarks, false);
+		
+		if (matchBeginMark) {
+			cpats[cpats.length - 1] = new byte[0];
+			mayMarks[cpats.length - 1] = false;
+		} else {
+			cpats[cpats.length - 1] = "/>".getBytes();
+		}
 		
 		int m = 0;
-		boolean[] mayMarks = new boolean[marks.size()];
-		Arrays.fill(mayMarks, true);
 		boolean match = false;
 		int LL = 120000 * 10;
 		int matchingMark = 0;
@@ -105,10 +114,10 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 			if (b == -1) break;
 
 			byte c = (byte) b; // this assumes eight-bit matching. OK with UTF-8
-
+			
 			boolean cMatch = false;
 			for (int k = 0; k < mayMarks.length; k++) {
-				if (mayMarks[k]) {
+				if (mayMarks[k] && !blacklistMarks[k]) {
 					if (c == cpats[k][m]) {
 						cMatch = true;
 						matchingMark = k;
@@ -130,6 +139,9 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 					outBufOrNull.write(cpats[matchingMark], 0, m);
 					outBufOrNull.write(c);
 					_pos += m + 1;
+					if (c == '<') {
+						blacklistMarks[blacklistMarks.length - 1] = true;
+					}
 				} else {
 					// we're looking for the start tag
 					_pos += m + 1;
@@ -139,6 +151,9 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 				}
 				m = 0;
 				Arrays.fill(mayMarks, true);
+				if (matchBeginMark) {
+					mayMarks[cpats.length - 1] = false;
+				}
 			}
 		}
 		if (matchBeginMark && match) {

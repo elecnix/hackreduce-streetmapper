@@ -107,6 +107,7 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 		boolean match = false;
 		int LL = 120000 * 10;
 		int matchingMark = 0;
+		int bytesRead = 0;
 
 		_bufferedInputStream.mark(LL); // large number to invalidate mark
 		while (true) {
@@ -114,6 +115,7 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 			if (b == -1) break;
 
 			byte c = (byte) b; // this assumes eight-bit matching. OK with UTF-8
+			bytesRead++;
 			
 			boolean cMatch = false;
 			for (int k = 0; k < mayMarks.length; k++) {
@@ -127,6 +129,9 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 				}
 			}
 			if (cMatch) {
+				if (!matchBeginMark && bytesRead > 1 && c == '<') {
+					blacklistMarks[blacklistMarks.length - 1] = true;
+				}
 				m++;
 				if (m == cpats[matchingMark].length) {
 					match = true;
@@ -139,9 +144,6 @@ public class XMLMultiRecordReader extends XMLRecordReader {
 					outBufOrNull.write(cpats[matchingMark], 0, m);
 					outBufOrNull.write(c);
 					_pos += m + 1;
-					if (c == '<') {
-						blacklistMarks[blacklistMarks.length - 1] = true;
-					}
 				} else {
 					// we're looking for the start tag
 					_pos += m + 1;

@@ -88,6 +88,8 @@ public class WayCounter extends Configured implements Tool {
         Job job = new Job(conf);
         job.setJarByClass(getClass());
         job.setJobName(getClass().getName());
+        
+        XMLInputFormat.setMaxInputSplitSize(job, 100000); // XXX for testing splits
 
         // Tell the job which Mapper and Reducer to use (classes defined above)
         job.setMapperClass(RecordCounterMapper.class);

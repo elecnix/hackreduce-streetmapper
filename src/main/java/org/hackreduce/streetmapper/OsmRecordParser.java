@@ -16,10 +16,11 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
-import org.hackreduce.streetmapper.model.NodeRef;
+import org.hackreduce.streetmapper.model.NodeId;
 import org.hackreduce.streetmapper.model.NodeRecord;
 import org.hackreduce.streetmapper.model.OsmRecord;
 import org.hackreduce.streetmapper.model.Tag;
+import org.hackreduce.streetmapper.model.WayId;
 import org.hackreduce.streetmapper.model.WayRecord;
 
 public class OsmRecordParser {
@@ -72,7 +73,9 @@ public class OsmRecordParser {
 	private void readNodeAttribute(NodeRecord node, Attribute att) {
 		//   <node id='20574043' timestamp='2008-08-04T03:40:49Z' uid='1626' user='FredB' visible='true' version='3' changeset='54783' lat='46.7891071' lon='-71.2258505'>
 		String localName = att.getName().getLocalPart();
-		if ("lat".equals(localName)) {
+		if ("id".equals(localName)) {
+			node.setId(new NodeId(Long.parseLong(att.getValue())));
+		} else if ("lat".equals(localName)) {
 			node.setLat(new FloatWritable(Float.parseFloat(att.getValue())));
 		} else if ("lon".equals(localName)) {
 			node.setLon(new FloatWritable(Float.parseFloat(att.getValue())));
@@ -83,9 +86,7 @@ public class OsmRecordParser {
 
 	private void readCommonAttribute(OsmRecord record, Attribute att) {
 		String localName = att.getName().getLocalPart();
-		if ("id".equals(localName)) {
-			record.setId(new LongWritable(Long.parseLong(att.getValue())));
-		} else if ("uid".equals(localName)) {
+		if ("uid".equals(localName)) {
 			record.setUid(new LongWritable(Long.parseLong(att.getValue())));
 		} else if ("changeset".equals(localName)) {
 			record.setChangeset(new LongWritable(Long.parseLong(att.getValue())));
@@ -111,7 +112,12 @@ public class OsmRecordParser {
 		Iterator<Attribute> attrs = startElement.getAttributes();
 		while (attrs.hasNext()) {
 			Attribute att = attrs.next();
-			readCommonAttribute(way, att);
+			String localName = att.getName().getLocalPart();
+			if ("id".equals(localName)) {
+				way.setId(new WayId(Long.parseLong(att.getValue())));
+			} else {
+				readCommonAttribute(way, att);
+			}
 		}
 		while (reader.hasNext()) {
 			XMLEvent xmlEvent = reader.nextEvent();
@@ -130,8 +136,8 @@ public class OsmRecordParser {
 		return way;
 	}
 
-	private NodeRef parseNd(XMLEventReader reader, StartElement startElement) {
-		NodeRef nodeRef = new NodeRef();
+	private NodeId parseNd(XMLEventReader reader, StartElement startElement) {
+		NodeId nodeRef = new NodeId();
 		@SuppressWarnings("unchecked")
 		Iterator<Attribute> attrs = startElement.getAttributes();
 		while (attrs.hasNext()) {
@@ -141,12 +147,12 @@ public class OsmRecordParser {
 		return nodeRef;
 	}
 
-	private void readNodeRefAttribute(NodeRef nodeRef, Attribute att) {
+	private void readNodeRefAttribute(NodeId nodeRef, Attribute att) {
 		String localName = att.getName().getLocalPart();
 		if ("ref".equals(localName)) {
-			nodeRef.setRef(new LongWritable(Long.parseLong(att.getValue())));
+			nodeRef.set(Long.parseLong(att.getValue()));
 		} else {
-			throw new RuntimeException("Unknown attribute: " + localName + " for " + NodeRef.class.getSimpleName());
+			throw new RuntimeException("Unknown attribute: " + localName + " for " + NodeId.class.getSimpleName());
 		}
 	}
 

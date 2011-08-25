@@ -12,7 +12,6 @@ import org.apache.hadoop.io.Writable;
 
 public class OsmRecord implements Writable {
 
-	private LongWritable id = new LongWritable(0);
 	private LongWritable uid = new LongWritable(0);
 	private Text timestamp = new Text();
 	private LongWritable changeset = new LongWritable(0);
@@ -21,14 +20,6 @@ public class OsmRecord implements Writable {
 	private BooleanWritable visible = new BooleanWritable(true);
 	
 	public OsmRecord() {}
-	
-	public LongWritable getId() {
-		return id;
-	}
-
-	public void setId(LongWritable id) {
-		this.id = id;
-	}
 
 	public LongWritable getUid() {
 		return uid;
@@ -80,12 +71,22 @@ public class OsmRecord implements Writable {
 
 	@Override
 	public void write(DataOutput out) throws IOException {
-		id.write(out);
+		uid.write(out);
+		timestamp.write(out);
+		changeset.write(out);
+		user.write(out);
+		version.write(out);
+		visible.write(out);
 	}
 
 	@Override
 	public void readFields(DataInput in) throws IOException {
-		id.readFields(in);
+		uid.readFields(in);
+		timestamp.readFields(in);
+		changeset.readFields(in);
+		user.readFields(in);
+		version.readFields(in);
+		visible.readFields(in);
 	}
 
 }

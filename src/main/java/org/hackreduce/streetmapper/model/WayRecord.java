@@ -6,7 +6,13 @@ public class WayRecord extends OsmRecord {
 	
 	public WayRecord() {}
 	
-	public WayRecord(Text xmlFilename, Text xml) {
-		super(xmlFilename, xml);
+	public void addNd(Object nd) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void addTag(Object tag) {
+		// TODO Auto-generated method stub
+		
 	}
 }

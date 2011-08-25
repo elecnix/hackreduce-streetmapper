@@ -41,12 +41,7 @@ extends ModelMapper<OsmRecord, Text, Text, K, V> {
 
 	@Override
 	protected OsmRecord instantiateModel(Text xmlFilename, Text xml) {
-		if (bytesStartsWith(WAY_BYTES, xml.getBytes())) {
-			return new WayRecord(xmlFilename, xml);
-		} else if (bytesStartsWith(NODE_BYTES, xml.getBytes())) {
-			return new NodeRecord(xmlFilename, xml);
-		}
-		return null;
+		return new OsmRecordParser().parse(xml);
 	}
 
 	private boolean bytesStartsWith(byte[] start, byte[] document) {

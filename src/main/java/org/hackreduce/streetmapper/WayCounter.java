@@ -51,11 +51,7 @@ public class WayCounter extends Configured implements Tool {
 			} else if (record instanceof NodeRecord) {
 				context.getCounter(Count.NODE_RECORDS).increment(1);
 			}
-			if (output == null) {
-				context.getCounter(Count.UNKNOWN_RECORDS).increment(1);
-			} else {
-				context.write(TOTAL_COUNT, output);
-			}
+			context.write(TOTAL_COUNT, output);
 		}
 
 	}

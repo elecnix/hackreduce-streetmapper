@@ -16,8 +16,10 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
+import org.hackreduce.streetmapper.model.NodeRef;
 import org.hackreduce.streetmapper.model.NodeRecord;
 import org.hackreduce.streetmapper.model.OsmRecord;
+import org.hackreduce.streetmapper.model.Tag;
 import org.hackreduce.streetmapper.model.WayRecord;
 
 public class OsmRecordParser {
@@ -80,18 +82,11 @@ public class OsmRecordParser {
 	}
 
 	private void readCommonAttribute(OsmRecord record, Attribute att) {
-		// TODO Auto-generated method stub
 		String localName = att.getName().getLocalPart();
 		if ("id".equals(localName)) {
 			record.setId(new LongWritable(Long.parseLong(att.getValue())));
 		} else if ("uid".equals(localName)) {
 			record.setUid(new LongWritable(Long.parseLong(att.getValue())));
-			//		} else if ("ref".equals(localName)) {
-			//			record.setRef(new LongWritable(Long.parseLong(att.getValue())));
-			//		} else if ("k".equals(localName)) {
-			//			record.setK(new Text(att.getValue()));
-			//		} else if ("v".equals(localName)) {
-			//			record.setV(new Text(att.getValue()));
 		} else if ("changeset".equals(localName)) {
 			record.setChangeset(new LongWritable(Long.parseLong(att.getValue())));
 		} else if ("version".equals(localName)) {
@@ -103,14 +98,14 @@ public class OsmRecordParser {
 		} else if ("visible".equals(localName)) {
 			record.setVisible(new BooleanWritable("true".equalsIgnoreCase(att.getValue())));
 		} else {
-			System.err.print("Unknown attribute: " + localName + "=" + att.getValue() + " ");
+			throw new RuntimeException("Unknown attribute: " + localName + " for " + OsmRecord.class.getSimpleName());
 		}
 	}
 
 	private WayRecord parseWay(XMLEventReader reader, StartElement startElement) throws XMLStreamException {
 		//   <way id='27073111' timestamp='2009-08-13T01:33:38Z' uid='37993' user='fsteggink' visible='true' version='7' changeset='2125488'>
 		//     <nd ref='1219686016' />
-	    //     <tag k='castle_type' v='citadel' />
+		//     <tag k='castle_type' v='citadel' />
 		WayRecord way = new WayRecord();
 		@SuppressWarnings("unchecked")
 		Iterator<Attribute> attrs = startElement.getAttributes();
@@ -124,9 +119,9 @@ public class OsmRecordParser {
 				StartElement startElement2 = xmlEvent.asStartElement();
 				String elemName = startElement2.getName().getLocalPart();
 				if ("nd".equals(elemName)) {
-					way.addNd(parseNd(reader, startElement2));
+					way.addNodeRef(parseNd(reader, startElement2));
 				} else if ("tag".equals(elemName)) {
-					way.addTag(parseTag(reader, startElement));
+					way.addTag(parseTag(reader, startElement2));
 				} else {
 					throw new RuntimeException("Unknown element: " + elemName + " in " + startElement.getName());
 				}
@@ -135,14 +130,46 @@ public class OsmRecordParser {
 		return way;
 	}
 
-	private Object parseNd(XMLEventReader reader, StartElement startElement) {
-		// TODO Auto-generated method stub
-		return null;
+	private NodeRef parseNd(XMLEventReader reader, StartElement startElement) {
+		NodeRef nodeRef = new NodeRef();
+		@SuppressWarnings("unchecked")
+		Iterator<Attribute> attrs = startElement.getAttributes();
+		while (attrs.hasNext()) {
+			Attribute att = attrs.next();
+			readNodeRefAttribute(nodeRef, att);
+		}
+		return nodeRef;
 	}
-	
-	private Object parseTag(XMLEventReader reader, StartElement startElement) {
-		// TODO Auto-generated method stub
-		return null;
+
+	private void readNodeRefAttribute(NodeRef nodeRef, Attribute att) {
+		String localName = att.getName().getLocalPart();
+		if ("ref".equals(localName)) {
+			nodeRef.setRef(new LongWritable(Long.parseLong(att.getValue())));
+		} else {
+			throw new RuntimeException("Unknown attribute: " + localName + " for " + NodeRef.class.getSimpleName());
+		}
+	}
+
+	private Tag parseTag(XMLEventReader reader, StartElement startElement) {
+		Tag tag = new Tag();
+		@SuppressWarnings("unchecked")
+		Iterator<Attribute> attrs = startElement.getAttributes();
+		while (attrs.hasNext()) {
+			Attribute att = attrs.next();
+			readTagAttribute(tag, att);
+		}
+		return tag;
+	}
+
+	private void readTagAttribute(Tag tag, Attribute att) {
+		String localName = att.getName().getLocalPart();
+		if ("k".equals(localName)) {
+			tag.setK(new Text(att.getValue()));
+		} else if ("v".equals(localName)) {
+			tag.setV(new Text(att.getValue()));
+		} else {
+			throw new RuntimeException("Unknown attribute: " + localName + " for " + Tag.class.getSimpleName() + ": " + tag);
+		}
 	}
 
 }

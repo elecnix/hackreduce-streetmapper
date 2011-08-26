@@ -13,5 +13,6 @@
 	<classpathentry kind="lib" path="lib/hadoop-0.20.2-tools.jar"/>
 	<classpathentry kind="lib" path="lib/junit-4.8.2.jar"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/simplelatlng-1.0.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

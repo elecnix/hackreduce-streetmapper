@@ -115,7 +115,7 @@ public class WayLengthCounter extends Configured implements Tool {
 				throws IOException, InterruptedException {
 			
 			context.getCounter(Count.WAY_RECORDS).increment(1);
-			ResolvedWay resolvedWay = new ResolvedWay(resolvedWayNodes);
+			ResolvedWay resolvedWay = new ResolvedWay(context.getConfiguration(), resolvedWayNodes);
 			context.write(wayId, resolvedWay);
 			
 			int length = getWayLengthInMeters(resolvedWay);
@@ -131,7 +131,7 @@ public class WayLengthCounter extends Configured implements Tool {
 				LatLng point = new LatLng(node.getLat().get(), node.getLon().get());
 				if (previousPoint != null) {
 					double distance = LatLngTool.distance(previousPoint, point, LengthUnit.METER);
-					System.out.println("Way " + resolvedWay.getWay().getId() + " segment from " + previousNode.getId() + " " + previousPoint + " to " + node.getId() + " " + point + ": " + distance + " meters");
+//					System.out.println("Way " + resolvedWay.getWay().getId() + " segment from " + previousNode.getId() + " " + previousPoint + " to " + node.getId() + " " + point + ": " + distance + " meters");
 					length += distance;
 				}
 				previousNode = node;

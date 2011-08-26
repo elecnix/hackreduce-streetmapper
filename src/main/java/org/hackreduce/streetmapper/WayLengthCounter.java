@@ -26,6 +26,10 @@ import org.hackreduce.streetmapper.model.WayId;
 import org.hackreduce.streetmapper.model.WayNodeRecord;
 import org.hackreduce.streetmapper.model.WayRecord;
 
+import com.javadocmd.simplelatlng.LatLng;
+import com.javadocmd.simplelatlng.LatLngTool;
+import com.javadocmd.simplelatlng.util.LengthUnit;
+
 /**
  * This MapReduce job will count the total number kilometers of ways in the data dump.
  */
@@ -34,7 +38,8 @@ public class WayLengthCounter extends Configured implements Tool {
 	public enum Count {
 		TOTAL_RECORDS,
 		WAY_RECORDS,
-		NODE_RECORDS
+		NODE_RECORDS,
+		WAY_METERS
 	}
 
 	/**
@@ -108,8 +113,31 @@ public class WayLengthCounter extends Configured implements Tool {
 	public static class SecondReducer extends Reducer<WayId, ResolvedWayNode, WayId, ResolvedWay> {
 		protected void reduce(WayId wayId, Iterable<ResolvedWayNode> resolvedWayNodes, Reducer<WayId,ResolvedWayNode,WayId,ResolvedWay>.Context context)
 				throws IOException, InterruptedException {
+			
 			context.getCounter(Count.WAY_RECORDS).increment(1);
-			context.write(wayId, new ResolvedWay(resolvedWayNodes.iterator().next().getWay(), resolvedWayNodes));
+			ResolvedWay resolvedWay = new ResolvedWay(resolvedWayNodes);
+			context.write(wayId, resolvedWay);
+			
+			int length = getWayLengthInMeters(resolvedWay);
+			context.getCounter(Count.WAY_METERS).increment(length);
+		}
+
+		private int getWayLengthInMeters(ResolvedWay resolvedWay) {
+			int length = 0;
+			LatLng previousPoint = null;
+			NodeRecord previousNode = null;
+			for (Object nodeObj : resolvedWay.getNodes().get()) {
+				NodeRecord node = (NodeRecord) nodeObj;
+				LatLng point = new LatLng(node.getLat().get(), node.getLon().get());
+				if (previousPoint != null) {
+					double distance = LatLngTool.distance(previousPoint, point, LengthUnit.METER);
+					System.out.println("Way " + resolvedWay.getWay().getId() + " segment from " + previousNode.getId() + " " + previousPoint + " to " + node.getId() + " " + point + ": " + distance + " meters");
+					length += distance;
+				}
+				previousNode = node;
+				previousPoint = point;
+			}
+			return length;
 		};
 	}
 

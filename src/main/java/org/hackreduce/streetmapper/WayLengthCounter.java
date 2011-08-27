@@ -57,12 +57,12 @@ public class WayLengthCounter extends Configured implements Tool {
 				context.getCounter(Count.WAY_RECORDS).increment(1);
 				WayRecord wayRecord = (WayRecord) record;
 				for (Object ref : wayRecord.getNodeRefs()) {
-					context.write(((NodeId) ref), new WayNodeRecord(record));
+					context.write(((NodeId) ref), new WayNodeRecord(wayRecord));
 				}
 			} else if (record instanceof NodeRecord) {
 				context.getCounter(Count.NODE_RECORDS).increment(1);
 				NodeRecord nodeRecord = (NodeRecord) record;
-				context.write(nodeRecord.getId(), new WayNodeRecord(record));
+				context.write(nodeRecord.getId(), new WayNodeRecord(nodeRecord));
 			}
 		}
 	}
@@ -95,7 +95,8 @@ public class WayLengthCounter extends Configured implements Tool {
 			// Second pass: create pairs
 			for (WayRecord way : ways) {
 				for (NodeRecord node : nodes) {
-					ResolvedWayNode resolved = new ResolvedWayNode(way, node);
+					int nodeIndex = way.getNodeIndex(node.getId());
+					ResolvedWayNode resolved = new ResolvedWayNode(way, node, nodeIndex);
 					context.write(resolved.getWay().getId(), resolved);
 				}
 			}

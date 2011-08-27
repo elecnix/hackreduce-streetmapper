@@ -3,10 +3,11 @@ package org.hackreduce.streetmapper.model;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.ReflectionUtils;
 
@@ -16,12 +17,12 @@ public class ResolvedWay implements Writable {
 	private ArrayWritable nodes;
 	
 	public ResolvedWay(Configuration conf, Iterable<ResolvedWayNode> resolvedWayNodes) throws IOException {
-		ArrayList<NodeRecord> list = new ArrayList<NodeRecord>();
+		TreeMap<IntWritable, NodeRecord> nodes = new TreeMap<IntWritable, NodeRecord>();
 		for (ResolvedWayNode wayNode : resolvedWayNodes) {
 			this.way = wayNode.getWay();
-			list.add(ReflectionUtils.copy(conf, wayNode.getNode(), new NodeRecord()));
+			nodes.put(new IntWritable(wayNode.getNodeIndex().get()), ReflectionUtils.copy(conf, wayNode.getNode(), new NodeRecord()));
 		}
-		this.nodes = new ArrayWritable(NodeRecord.class, list.toArray(new NodeRecord[list.size()]));
+		this.nodes = new ArrayWritable(NodeRecord.class, nodes.values().toArray(new NodeRecord[nodes.size()]));
 	}
 
 	public WayRecord getWay() {

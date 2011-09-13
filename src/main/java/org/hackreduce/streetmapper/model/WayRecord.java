@@ -47,12 +47,11 @@ public class WayRecord extends OsmRecord {
 	}
 	
 	public void addTag(Tag tag) {
-		tags.put(tag.getK(), tag);
+		tags.put(tag.getK(), tag.getV());
 	}
 	
-	@SuppressWarnings("rawtypes")
-	public Collection getTags() {
-		return tags.values();
+	public MapWritable getTags() {
+		return tags;
 	}
 	
 	@Override

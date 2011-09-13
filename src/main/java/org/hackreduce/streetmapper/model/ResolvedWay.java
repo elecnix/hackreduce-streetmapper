@@ -11,10 +11,17 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import com.javadocmd.simplelatlng.LatLng;
+import com.javadocmd.simplelatlng.LatLngTool;
+import com.javadocmd.simplelatlng.util.LengthUnit;
+
 public class ResolvedWay implements Writable {
 
-	private WayRecord way;
-	private ArrayWritable nodes;
+	private WayRecord way = new WayRecord();
+	private ArrayWritable nodes = new ArrayWritable(NodeRecord.class);
+	
+	public ResolvedWay() {
+	}
 	
 	public ResolvedWay(Configuration conf, Iterable<ResolvedWayNode> resolvedWayNodes) throws IOException {
 		TreeMap<IntWritable, NodeRecord> nodes = new TreeMap<IntWritable, NodeRecord>();
@@ -52,5 +59,23 @@ public class ResolvedWay implements Writable {
 		way.readFields(in);
 		nodes.readFields(in);
 	}
+
+	public double getLengthInMeters() {
+		double length = 0;
+		LatLng previousPoint = null;
+		NodeRecord previousNode = null;
+		for (Object nodeObj : getNodes().get()) {
+			NodeRecord node = (NodeRecord) nodeObj;
+			LatLng point = new LatLng(node.getLat().get(), node.getLon().get());
+			if (previousPoint != null) {
+				double distance = LatLngTool.distance(previousPoint, point, LengthUnit.METER);
+//				System.out.println("Way " + resolvedWay.getWay().getId() + " segment from " + previousNode.getId() + " " + previousPoint + " to " + node.getId() + " " + point + ": " + distance + " meters");
+				length += distance;
+			}
+			previousNode = node;
+			previousPoint = point;
+		}
+		return length;
+	};
 
 }
